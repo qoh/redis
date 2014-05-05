@@ -1,5 +1,5 @@
 // TODO:
-//  * Handle subscribe/unsubscribe state change
+//  * Handle subscribe/unsubscribe state change and support subscription callbacks
 //  * Bulk calls (queue up commands and get callback with array of replies)
 
 function RedisClient(%port, %host)
