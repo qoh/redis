@@ -151,17 +151,16 @@ function RedisClientMulti::exec(%this, %func, %data)
   // This is where the magic happens
   %this.client.command(buildArray("MULTI"));
 
-  // Attach a multi callback
-  %this.client.callbacks.append(buildArray(
-    %func, %data, %this.commands.size, Array()
-  ));
-
   // Issue each command that was queued
   for (%i = 0; %i < %this.commands.size; %i++)
   {
-    // Don't attach a callback individually, use the multi one
-    %this.client.command(%this.commands.item[%i], "", "", 1);
+    %this.client.command(%this.commands.item[%i]);
   }
+  
+  // Attach a multi callback for the exec
+  %this.client.callbacks.append(buildArray(
+    %func, %data, %this.commands.size, Array()
+  ));
 
   // Exec it without a callback
   %this.client.command(buildArray("EXEC"), "", "", 1);
