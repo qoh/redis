@@ -42,7 +42,7 @@ function RedisClient::onRemove(%this)
   %this.socket.delete();
 }
 
-function RedisClient::command(%this, %argv, %func, %data)
+function RedisClient::command(%this, %argv, %func, %data, %noAttachCallback)
 {
   if (!isCollection(%argv))
   {
@@ -68,9 +68,12 @@ function RedisClient::command(%this, %argv, %func, %data)
   }
 
   %argv.unref();
-
   %this.socket.send(%payload);
-  %this.callbacks.push(buildArray(%func, %data));
+
+  if (!%noAttachCallback)
+  {
+    %this.callbacks.push(buildArray(%func, %data));
+  }
 
   return 0;
 }
@@ -83,14 +86,34 @@ function RedisClientTCP::commandString(%this, %str, %func, %data)
 function RedisClient::onReply(%this, %reply)
 {
   %reply.ref();
-  %entry = %this.callbacks.pop();
+  %entry = %this.callbacks.peek();
+
+  // Check for multi
+  if (%entry.item[2])
+  {
+    %entry.item[3].append(%reply);
+
+    if (%entry.item[3].size >= %entry.item[2])
+    {
+      %this.callbacks.pop();
+    }
+    else
+    {
+      %reply.unref();
+      return;
+    }
+  }
+  else
+  {
+    %this.callbacks.pop();
+  }
 
   %func = %entry.item[0];
   %data = %entry.item[1];
 
   if (isFunction(%func))
   {
-    call(%func, %reply, %data, %this);
+    call(%func, %entry.item[2] ? %entry.item[3] : %reply, %data, %this);
   }
 
   %reply.unref();
@@ -99,4 +122,74 @@ function RedisClient::onReply(%this, %reply)
   {
     %this.socket.disconnect();
   }
+}
+
+function RedisClient::multi(%this)
+{
+  return new ScriptObject()
+  {
+    class = "RedisClientMulti";
+    client = %this;
+  };
+}
+
+function RedisClientMulti::onAdd(%this)
+{
+  %this.commands = Array().ref;
+}
+
+function RedisClientMulti::onRemove(%this)
+{
+  %this.commands.unref();
+}
+
+function RedisClientMulti::exec(%this, %func, %data)
+{
+  if (%this.__exec)
+  {
+    return 1;
+  }
+
+  // This is where the magic happens
+  %this.client.command(buildArray("MULTI"));
+
+  // Attach a multi callback
+  %this.client.callbacks.append(buildArray(
+    %func, %data, %this.commands.size, Array()
+  ));
+
+  // Issue each command that was queued
+  for (%i = 0; %i < %this.commands.size; %i++)
+  {
+    // Don't attach a callback individually, use the multi one
+    %this.client.command(%this.commands.item[%i], "", "", 1);
+  }
+
+  // Exec it without a callback
+  %this.client.command(buildArray("EXEC"), "", "", 1);
+
+  // That's it, folks — see you next time
+  %this.__exec = 1;
+  %this.schedule(0, "delete");
+
+  return 0;
+}
+
+function RedisClientMulti::command(%this, %argv)
+{
+  if (!isCollection(%argv))
+  {
+    return 1;
+  }
+
+  %argv.ref();
+  %this.commands.append(%argv);
+  %argv.unref();
+
+  return 0;
+}
+
+function RedisClientMulti::commandString(%this, %str)
+{
+  return %this.command(split(%str, " "));
 }
