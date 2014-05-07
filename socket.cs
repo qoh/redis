@@ -1,10 +1,31 @@
-function RedisClientTCP::onAdd(%this)
+// Private: Create a new RedisClientSocket instance. The instance will use
+// attributes from the given RedisClient.
+//
+// client - An instance of a RedisClient.
+//
+// Returns the new instance.
+function RedisClientSocket(%client)
+{
+  return new TCPObject(RedisClientSocket)
+  {
+    client = %client;
+  };
+}
+
+// Internal: Initialize a new RedisClientSocket.
+//
+// Returns nothing.
+function RedisClientSocket::onAdd(%this)
 {
   %this.connected = 0;
   %this.pendingDisconnect = 0;
 }
 
-function RedisClientTCP::connect(%this)
+// Public: Start connecting to the server indicated by the client properties.
+// Nothing will happen if the client is already connected.
+//
+// Returns nothing.
+function RedisClientSocket::connect(%this)
 {
   if (!%this.connected)
   {
@@ -13,7 +34,12 @@ function RedisClientTCP::connect(%this)
   }
 }
 
-function RedisClientTCP::disconnect(%this)
+// Public: Request a disconnect from the Redis server. An actual disconnect
+// will be done once the callback queue is empty. No more commands can be
+// issued after requesting a disconnect.
+//
+// Returns nothing.
+function RedisClientSocket::disconnect(%this)
 {
   if (%this.client.callbacks.empty())
   {
@@ -26,7 +52,12 @@ function RedisClientTCP::disconnect(%this)
   }
 }
 
-function RedisClientTCP::send(%this, %data)
+// Internal: Sends arbitrary data to the server or queues it if not connected.
+//
+// data - The data to send.
+//
+// Returns nothing.
+function RedisClientSocket::send(%this, %data)
 {
   if (%this.connected)
   {
@@ -38,22 +69,36 @@ function RedisClientTCP::send(%this, %data)
   }
 }
 
-function RedisClientTCP::onConnected(%this)
+// Internal: Handle a connection being established.
+//
+// Returns nothing.
+function RedisClientSocket::onConnected(%this)
 {
   %this.connected = 1;
   %this.pendingDisconnect = 0;
 
-  %this.send(%this.queue);
-  %this.queue = "";
+  if (%this.queue !$= "")
+  {
+    %this.send(%this.queue);
+    %this.queue = "";
+  }
 }
 
-function RedisClientTCP::onDisconnect(%this)
+// Internal: Handle a disconnect.
+//
+// Returns nothing.
+function RedisClientSocket::onDisconnect(%this)
 {
   %this.connected = 0;
   %this.pendingDisconnect = 0;
 }
 
-function RedisClientTCP::onLine(%this, %line)
+// Internal: Send the incoming line to the RedisReplyParser.
+//
+// line - The received line.
+//
+// Returns nothing.
+function RedisClientSocket::onLine(%this, %line)
 {
   %this.client.parser.onLine(%line);
 }
