@@ -9,14 +9,10 @@ function RedisClient(%port, %host)
 {
   // Fill in default values for empty arguments
   if (%port $= "")
-  {
     %port = 6379;
-  }
 
   if (%host $= "")
-  {
     %host = "127.0.0.1";
-  }
 
   return new ScriptObject()
   {
@@ -85,9 +81,7 @@ function RedisClient::onReply(%this, %reply)
 
         // It might just be an empty callback
         if (isFunction(%func))
-        {
           call(%func, %reply.item[2], %data, %this);
-        }
       }
     }
 
@@ -144,9 +138,7 @@ function RedisClient::onReply(%this, %reply)
 
   // Did the user request a disconnect? If there's no more callbacks, try now.
   if (%this.socket.pendingDisconnect && %this.callbacks.empty())
-  {
     %this.socket.disconnect();
-  }
 }
 
 // Public: Issue a new command to the Redis server using an Array of values.
@@ -167,9 +159,7 @@ function RedisClient::onReply(%this, %reply)
 function RedisClient::command(%this, %argv, %func, %data, %noAttachCallback)
 {
   if (!isCollection(%argv))
-  {
     return 1;
-  }
 
   %argv.ref();
 
@@ -200,9 +190,7 @@ function RedisClient::command(%this, %argv, %func, %data, %noAttachCallback)
   %this.socket.send(%payload);
 
   if (!%noAttachCallback)
-  {
     %this.callbacks.append(buildArray(%func, %data));
-  }
 
   return 0;
 }
@@ -240,9 +228,7 @@ function RedisClient::commandString(%this, %str, %func, %data, %noAttachCallback
 function RedisClient::subscribe(%this, %channels, %func, %data)
 {
   if (!isCollection(%channels))
-  {
     %channels = split(%channels, " ");
-  }
 
   // Just use `::command()` like normal to indicate the intent of subscribing.
   %argv = buildArray("SUBSCRIBE");
@@ -263,9 +249,7 @@ function RedisClient::subscribe(%this, %channels, %func, %data)
     // presence of the channel key as an Array is enough for the subscription
     // to work in `::onReply()` regardless.
     if (%func $= "")
-    {
       continue;
-    }
 
     // Remove all callback entries with the same function. This is both to
     // allow changing the data used with the function, as well as to avoid
@@ -298,11 +282,9 @@ function RedisClient::subscribe(%this, %channels, %func, %data)
 function RedisClient::unsubscribe(%this, %channels)
 {
   if (!isCollection(%channels))
-  {
     %channels = split(%channels, " ");
-  }
 
-  for (%i = 0; %i < %channels.size; %i++)
+  for (%i = %this.channels.size - 1; %i >= 0; %i--)
   {
     // `::remove()` works even if the key doesn't exist.
     %this.subscriptions.remove(%channels.item[%i]);
@@ -334,7 +316,7 @@ function RedisClient::multi(%this)
 // Returns nothing.
 function RedisClientMulti::onAdd(%this)
 {
-  %this.commands = Array().ref;
+  %this.commands = Array().ref();
 }
 
 // Internal: Deconstruct a RedisClientMulti instance.
@@ -359,9 +341,7 @@ function RedisClientMulti::exec(%this, %func, %data)
 
   // Issue each command that was queued
   for (%i = 0; %i < %this.commands.size; %i++)
-  {
     %this.client.command(%this.commands.item[%i]);
-  }
 
   // Attach a multi callback for the exec
   %this.client.callbacks.append(buildArray(
@@ -384,9 +364,7 @@ function RedisClientMulti::exec(%this, %func, %data)
 function RedisClientMulti::command(%this, %argv)
 {
   if (!isCollection(%argv))
-  {
     return 1;
-  }
 
   %argv.ref();
   %this.commands.append(%argv);

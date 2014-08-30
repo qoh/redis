@@ -6,10 +6,10 @@
 // Returns the new instance.
 function RedisClientSocket(%client)
 {
-  return new TCPObject(RedisClientSocket)
-  {
-    client = %client;
-  };
+	return new TCPObject(RedisClientSocket)
+	{
+		client = %client;
+	};
 }
 
 // Internal: Initialize a new RedisClientSocket.
@@ -17,8 +17,8 @@ function RedisClientSocket(%client)
 // Returns nothing.
 function RedisClientSocket::onAdd(%this)
 {
-  %this.connected = 0;
-  %this.pendingDisconnect = 0;
+	%this.connected = 0;
+	%this.pendingDisconnect = 0;
 }
 
 // Public: Start connecting to the server indicated by the client properties.
@@ -27,11 +27,11 @@ function RedisClientSocket::onAdd(%this)
 // Returns nothing.
 function RedisClientSocket::connect(%this)
 {
-  if (!%this.connected)
-  {
-    %this.pendingDisconnect = 0;
-    Parent::connect(%this, %this.client.host @ ":" @ %this.client.port);
-  }
+	if (!%this.connected)
+	{
+		%this.pendingDisconnect = 0;
+		Parent::connect(%this, %this.client.host @ ":" @ %this.client.port);
+	}
 }
 
 // Public: Request a disconnect from the Redis server. An actual disconnect
@@ -41,15 +41,13 @@ function RedisClientSocket::connect(%this)
 // Returns nothing.
 function RedisClientSocket::disconnect(%this)
 {
-  if (%this.client.callbacks.empty())
-  {
-    Parent::disconnect(%this);
-    %this.onDisconnect();
-  }
-  else
-  {
-    %this.pendingDisconnect = 1;
-  }
+	if (%this.client.callbacks.empty())
+	{
+		Parent::disconnect(%this);
+		%this.onDisconnect();
+	}
+	else
+		%this.pendingDisconnect = 1;
 }
 
 // Internal: Sends arbitrary data to the server or queues it if not connected.
@@ -59,14 +57,10 @@ function RedisClientSocket::disconnect(%this)
 // Returns nothing.
 function RedisClientSocket::send(%this, %data)
 {
-  if (%this.connected)
-  {
-    Parent::send(%this, %data);
-  }
-  else
-  {
-    %this.queue = %this.queue @ %data;
-  }
+	if (%this.connected)
+		Parent::send(%this, %data);
+	else
+		%this.queue = %this.queue @ %data;
 }
 
 // Internal: Handle a connection being established.
@@ -74,14 +68,14 @@ function RedisClientSocket::send(%this, %data)
 // Returns nothing.
 function RedisClientSocket::onConnected(%this)
 {
-  %this.connected = 1;
-  %this.pendingDisconnect = 0;
+	%this.connected = 1;
+	%this.pendingDisconnect = 0;
 
-  if (%this.queue !$= "")
-  {
-    %this.send(%this.queue);
-    %this.queue = "";
-  }
+	if (%this.queue !$= "")
+	{
+		%this.send(%this.queue);
+		%this.queue = "";
+	}
 }
 
 // Internal: Handle a disconnect.
@@ -89,8 +83,8 @@ function RedisClientSocket::onConnected(%this)
 // Returns nothing.
 function RedisClientSocket::onDisconnect(%this)
 {
-  %this.connected = 0;
-  %this.pendingDisconnect = 0;
+	%this.connected = 0;
+	%this.pendingDisconnect = 0;
 }
 
 // Internal: Send the incoming line to the RedisReplyParser.
@@ -100,5 +94,5 @@ function RedisClientSocket::onDisconnect(%this)
 // Returns nothing.
 function RedisClientSocket::onLine(%this, %line)
 {
-  %this.client.parser.onLine(%line);
+	%this.client.parser.onLine(%line);
 }
